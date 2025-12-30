@@ -18,26 +18,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Use JDK 17 temporarily so sdkmanager (cmdline-tools) can run
+      # Use JDK 17 for sdkmanager (cmdline-tools require Java 17)
       - name: Set up JDK 17 for sdkmanager
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK (install required packages)
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: "latest"
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: true
           packages: |
+            cmdline-tools;latest
             platform-tools
-            "platforms;android-33"
-            "build-tools;33.0.2"
+            platforms;android-33
+            build-tools;33.0.2
 
-      # If you prefer to run Gradle with Java 11, switch back to JDK 11 here.
-      # If your project is compatible with Java 17 for Gradle/AGP, you can remove this step.
+      # Switch to JDK 11 for building if your project needs it
       - name: Set up JDK 11 for Gradle build
         uses: actions/setup-java@v4
         with:
