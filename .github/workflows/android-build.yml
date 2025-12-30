@@ -1,4 +1,4 @@
-name: Android Build
+name: Android Build (with explicit sdkmanager)
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 
 jobs:
   build:
-    name: Build Debug APK
     runs-on: ubuntu-latest
     env:
       JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8
@@ -18,26 +17,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Use JDK 17 for sdkmanager (cmdline-tools require Java 17)
+      # Use JDK 17 so sdkmanager can run
       - name: Set up JDK 17 for sdkmanager
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: "latest"
-          accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: true
-          packages: |
-            cmdline-tools;latest
-            platform-tools
-            platforms;android-33
-            build-tools;33.0.2
+      - name: Ensure Android SDK root exists
+        run: |
+          sudo mkdir -p /usr/local/lib/android/sdk || true
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
-      # Switch to JDK 11 for building if your project needs it
+      - name: Install Android SDK packages with sdkmanager
+        # each package passed as a separate argument to avoid the multiline-packages parsing issue
+        run: |
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "cmdline-tools not found at $SDKMANAGER — attempting to use system sdkmanager"
+            SDKMANAGER=$(command -v sdkmanager || true)
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found; aborting."
+            exit 1
+          fi
+          echo "sdkmanager: $SDKMANAGER"
+          # Accept licenses and install packages; use yes to accept prompts
+          yes | "$SDKMANAGER" "cmdline-tools;latest" "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # Switch back to JDK 11 for Gradle if needed
       - name: Set up JDK 11 for Gradle build
         uses: actions/setup-java@v4
         with:
@@ -59,11 +69,6 @@ jobs:
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
-
-      - name: List produced APKs
-        run: |
-          echo "Artifacts under app/build/outputs:"
-          find app/build/outputs -type f -name "*.apk" -maxdepth 4 -print || true
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
