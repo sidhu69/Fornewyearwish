@@ -18,7 +18,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      # Use JDK 17 temporarily so sdkmanager (cmdline-tools) can run
+      - name: Set up JDK 17 for sdkmanager
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK (install required packages)
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "latest"
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+          packages: |
+            platform-tools
+            "platforms;android-33"
+            "build-tools;33.0.2"
+
+      # If you prefer to run Gradle with Java 11, switch back to JDK 11 here.
+      # If your project is compatible with Java 17 for Gradle/AGP, you can remove this step.
+      - name: Set up JDK 11 for Gradle build
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -33,19 +53,6 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-
-      - name: Set up Android SDK
-        # On GitHub-hosted runners this is often unnecessary because common SDK components are preinstalled.
-        # Keep this step if you want to guarantee specific platform/build-tools versions.
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: "latest"
-          accept-android-sdk-licenses: true
-          log-accepted-android-sdk-licenses: true
-          packages: |
-            platform-tools
-            "platforms;android-33"
-            "build-tools;33.0.2"
 
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
