@@ -34,13 +34,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: (Optional) Set up Android SDK
-        # This action is maintained; on GitHub-hosted runners it's often not required,
-        # but keep it if you want to ensure specific api/build-tools versions.
+      - name: Set up Android SDK
+        # On GitHub-hosted runners this is often unnecessary because common SDK components are preinstalled.
+        # Keep this step if you want to guarantee specific platform/build-tools versions.
         uses: android-actions/setup-android@v3
         with:
-          api-level: 33
-          build-tools: 33.0.2
+          cmdline-tools-version: "latest"
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: true
+          packages: |
+            platform-tools
+            "platforms;android-33"
+            "build-tools;33.0.2"
 
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
