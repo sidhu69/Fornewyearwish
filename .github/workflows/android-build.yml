@@ -9,14 +9,10 @@ on:
 
 jobs:
   build:
-    name: Build APK
+    name: Build Debug APK
     runs-on: ubuntu-latest
     env:
       JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -38,8 +34,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Set up Android SDK
-        uses: r0adkll/setup-android@v2
+      - name: (Optional) Set up Android SDK
+        # This action is maintained; on GitHub-hosted runners it's often not required,
+        # but keep it if you want to ensure specific api/build-tools versions.
+        uses: android-actions/setup-android@v3
         with:
           api-level: 33
           build-tools: 33.0.2
@@ -47,31 +45,16 @@ jobs:
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
 
-      - name: Decode keystore (optional)
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Decoding keystore..."
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$HOME/keystore.jks"
-            ls -l "$HOME/keystore.jks"
-          else
-            echo "ANDROID_KEYSTORE_BASE64 is empty — skipping keystore decode"
-          fi
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Add signing properties for Gradle (optional)
+      - name: List produced APKs
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Writing signing properties to gradle.properties..."
-            cat >> "$GITHUB_WORKSPACE/gradle.properties" 
-            echo "Signing properties appended."
-          else
-            echo "No keystore — skipping signing properties"
-          fi
-
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+          echo "Artifacts under app/build/outputs:"
+          find app/build/outputs -type f -name "*.apk" -maxdepth 4 -print || true
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-apks
           path: app/build/outputs/**/*.apk
